@@ -117,10 +117,9 @@ padding <- function(img, val){
 }
 
 average <- function(mat) {
-  pad <- padding(mat, 4)
-  iterateur <- blocking(mat,4)
+  pad <- padding(mat, 2)
+  iterateur <- blocking(mat,2)
   res <- matrix(0,dim(pad)[1],dim(pad)[2])
-  #iterateur <- matrix((2*c(1:(dim(pad)[1]*dim(pad)[2]/2))-1),dim(pad)[1],dim(pad)[2])[1:(dim(pad)[1]/2),1:(dim(pad)[2]/2)]
   av <- (pad[iterateur]+pad[iterateur+1]+pad[iterateur+dim(pad)[1]]+pad[iterateur+dim(pad)[1]+1])/4
   res[iterateur] <- av
   res[iterateur+1] <- av
@@ -132,8 +131,8 @@ average <- function(mat) {
 # Partie Y
 
 blocking <- function(img, size) {
-  pad <- padding(mat, size)
-  iterateur <- matrix(((size/2)*c(1:(dim(pad)[1]*dim(pad)[2]/(size/2)))-1),dim(pad)[1],dim(pad)[2])[1:(dim(pad)[1]/2),1:(dim(pad)[2]/2)]
+  pad <- padding(img, size)
+  iterateur <- matrix((size*c(1:(dim(pad)[1]*dim(pad)[2]/size))-(size-1)),dim(pad)[1],dim(pad)[2])[1:(dim(pad)[1]/2),1:(dim(pad)[2]/2)]
   return(iterateur)
 }
 
