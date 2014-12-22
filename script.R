@@ -95,26 +95,12 @@ Yuv <- function(img) {
   V <- img[,,1] * 0.615 + img[,,2] * -0.515 + img[,,3] * -0.1
   mat <- array(0,c(dim(img)[1],dim(img)[2],3))
   mat[,,1] <- Y
-  mat[,,2] <- Y
-  mat[,,3] <- Y
+  mat[,,2] <- u
+  mat[,,3] <- v
   return(mat)
 }
 
 # Partie uv
-
-average <- function(mat) {
-  res <- matrix(0,dim(mat)[1],dim(mat)[2])
-  pad <- padding(mat, 4)
-  iterateur <- matrix((2*c(1:(dim(pad)[1]*dim(pad)[2]/2))-1),dim(pad)[1],dim(pad)[2])[1:4,1:4]
-  av <- (pad[iterateur]+pad[iterateur+1]+pad[iterateur+2]+pad[iterateur+3])/4
-  res[iterateur] <- av
-  res[iterateur+1] <- av
-  res[iterateur+dim(pad)[1]] <- av
-  res[iterateur+dim(pad)[1]+1] <- av
-  return(res)
-}
-
-# Partie Y
 
 padding <- function(img, val){
   if(dim(img)[1]%%val)
@@ -130,9 +116,25 @@ padding <- function(img, val){
   return(img_finale)
 }
 
-blocking <- function(img) {
-  img <- padding(img)
-  img[1:8, 1:8, ]
+average <- function(mat) {
+  pad <- padding(mat, 4)
+  iterateur <- blocking(mat,4)
+  res <- matrix(0,dim(pad)[1],dim(pad)[2])
+  #iterateur <- matrix((2*c(1:(dim(pad)[1]*dim(pad)[2]/2))-1),dim(pad)[1],dim(pad)[2])[1:(dim(pad)[1]/2),1:(dim(pad)[2]/2)]
+  av <- (pad[iterateur]+pad[iterateur+1]+pad[iterateur+dim(pad)[1]]+pad[iterateur+dim(pad)[1]+1])/4
+  res[iterateur] <- av
+  res[iterateur+1] <- av
+  res[iterateur+dim(pad)[1]] <- av
+  res[iterateur+dim(pad)[1]+1] <- av
+  return(res)
+}
+
+# Partie Y
+
+blocking <- function(img, size) {
+  pad <- padding(mat, size)
+  iterateur <- matrix(((size/2)*c(1:(dim(pad)[1]*dim(pad)[2]/(size/2)))-1),dim(pad)[1],dim(pad)[2])[1:(dim(pad)[1]/2),1:(dim(pad)[2]/2)]
+  return(iterateur)
 }
 
 convertDCT <- function(img){
