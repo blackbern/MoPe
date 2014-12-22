@@ -132,7 +132,7 @@ average <- function(mat) {
 
 blocking <- function(img, size) {
   pad <- padding(img, size)
-  iterateur <- matrix((size*c(1:(dim(pad)[1]*dim(pad)[2]/size))-(size-1)),dim(pad)[1],dim(pad)[2])[1:(dim(pad)[1]/2),1:(dim(pad)[2]/2)]
+  iterateur <- matrix((size*c(1:(dim(pad)[1]*dim(pad)[2]/size))-(size-1)),dim(pad)[1],dim(pad)[2])[1:(dim(pad)[1]/size),1:(dim(pad)[2]/size)]
   return(iterateur)
 }
 
