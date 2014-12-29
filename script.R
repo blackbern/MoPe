@@ -91,8 +91,8 @@ matrixInit <- function (v, m, n) { matrix (rep (v, n*m), m, n) }
 # Partie 1
 Yuv <- function(img) {
   Y <- img[,,1] * 0.299 + img[,,2] * 0.587 + img[,,3] * 0.114
-  U <- img[,,1] * -0.147 + img[,,2] * -0.289 + img[,,3] * 0.436
-  V <- img[,,1] * 0.615 + img[,,2] * -0.515 + img[,,3] * -0.1
+  u <- img[,,1] * -0.147 + img[,,2] * -0.289 + img[,,3] * 0.436
+  v <- img[,,1] * 0.615 + img[,,2] * -0.515 + img[,,3] * -0.1
   mat <- array(0,c(dim(img)[1],dim(img)[2],3))
   mat[,,1] <- Y
   mat[,,2] <- u
@@ -131,18 +131,112 @@ average <- function(mat) {
 # Partie Y
 
 blocking <- function(img, size) {
+pad <- padding(img, size)
+ iterateur <- matrix((size*c(1:(dim(pad)[1]*dim(pad)[2]/size))-(size-1)),dim(pad)[1],dim(pad)[2])[1:(dim(pad)[1]/size),1:(dim(pad)[2]/size)]
+return(iterateur)
+}
+
+#DC  /OK
+blocking <- function(img, size) {
   pad <- padding(img, size)
-  iterateur <- matrix((size*c(1:(dim(pad)[1]*dim(pad)[2]/size))-(size-1)),dim(pad)[1],dim(pad)[2])[1:(dim(pad)[1]/2),1:(dim(pad)[2]/2)]
-  return(iterateur)
+  return(matrix(pad,size,ncol(pad)*nrow(pad)))
+  #return(matrix(pad,(size*size),(dim(pad)[1]*dim(pad)[2])/(size*size)))
+}
+
+
+#dc OK
+# blocking2<- function(mat,size)
+# {
+#   pad <- padding(mat, size)
+#   resultat<-matrix(,0,0)
+#   for (i in seq(1,nrow(pad),size))
+#        for(j in seq(1,ncol(pad),size))
+#           resultat<-c(resultat,pad[i:(i+(size-1)),j:(j+(size-1))])
+#   return(matrix(resultat,size*size,(ncol(pad)*nrow(pad)/(size*size))))
+# }
+
+blocking2<- function(mat,size)
+{
+  pad <- padding(mat, size)
+  resultat<-matrix(,0,0)
+  zigzag<-zigzag(size)
+  for (i in seq(1,nrow(pad),size))
+    for(j in seq(1,ncol(pad),size))
+      resultat<-c(resultat,pad[i:(i+(size-1)),j:(j+(size-1))][zigzag])
+  return(matrix(resultat,size*size,(ncol(pad)*nrow(pad)/(size*size))))
 }
 
 convertDCT <- function(img){
-  image <- padding(img)
+  image <- blocking2(img,8)
   image <- mvdct(image,2,FALSE)
   return(image)
 }
 
-DPCM <- function(img) {
-  iterateur <- 8*c(1:(dim(img)[1]*dim(img)[2]/8))
-  img[iterateur] <- 0
+#dc
+View(blocking2(mat,8)[1,])
+#ac
+View(blocking2(mat,8)[2:nrow(blocking2(mat,8)),])
+
+#DPCMTest<-function(mat)
+#{
+#dpcm<-(matrix(c(mat[1],(mat[2:(nrow(mat)*ncol(mat))]-mat[1:(nrow(mat)*ncol(mat)-1)])),nrow(mat),ncol(mat)))  
+#return(dpcm)
+#}
+DPCM<-function(mat)
+{
+#   dpcm<-c(mat[1],(mat[2:(nrow(mat)*ncol(mat))]-mat[1:(nrow(mat)*ncol(mat)-1)]))  
+  dpcm<-c(mat[1],(mat[2:length(mat)]-mat[1:(length(mat)-1)]))
+  return(dpcm)
 }
+
+zigzag<-function(size)
+{ num<-1
+  resultat<-array(0,size*size)
+  for(i in 1:size) 
+    {
+         for(j in 1:abs(size-abs(size-i))) 
+           {
+           if(i%%2 == 0)
+            {
+              resultat[num]<-(j-1)*size+(abs(size-abs(size-i+j-1)))
+#               print(j)
+#               resultat[num,2]<-(abs(8-abs(8-i+j-1)))
+#               print(abs(8-abs(8-i+j-1)))
+            }
+           else
+            {
+              resultat[num]<-((abs(size-abs(size-i+j-1)))-1)*size+j
+#               print(j)
+#               resultat[num,1]<-(abs(8-abs(8-i+j-1)))
+#               print(abs(8-abs(8-i+j-1)))
+            }
+            num<-num+1
+         }
+    }
+  for(i in 1:(size-1)) 
+    {
+        for(j in abs(size-abs(size-i):1)) 
+            {
+              if(i%%2==1)
+              {
+                resultat[num]<-((abs(15-abs(size-i+j-1)))-1)*size+j+1
+#                 print(abs(15-abs(8-i+j-1)))
+#                 resultat[num,2]<-(j+1)
+#                 print(j+1)
+              }
+              else
+              {
+                resultat[num]<-j*size+(abs((size*2-1)-abs(size-i+j-1)))
+#                 print(abs(15-abs(8-i+j-1)))
+#                 resultat[num,1]<-(j+1)
+#                 print(j+1)
+              }
+              num<-num+1
+            }
+    
+    }
+
+  return(resultat)
+}
+
+
