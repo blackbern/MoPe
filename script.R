@@ -139,6 +139,7 @@ return(iterateur)
 #DC  /OK
 blocking <- function(img, size) {
   pad <- padding(img, size)
+<<<<<<< HEAD
   return(matrix(pad,size,ncol(pad)*nrow(pad)))
   #return(matrix(pad,(size*size),(dim(pad)[1]*dim(pad)[2])/(size*size)))
 }
@@ -164,6 +165,10 @@ blocking2<- function(mat,size)
     for(j in seq(1,ncol(pad),size))
       resultat<-c(resultat,pad[i:(i+(size-1)),j:(j+(size-1))][zigzag])
   return(matrix(resultat,size*size,(ncol(pad)*nrow(pad)/(size*size))))
+=======
+  iterateur <- matrix((size*c(1:(dim(pad)[1]*dim(pad)[2]/size))-(size-1)),dim(pad)[1],dim(pad)[2])[1:(dim(pad)[1]/size),1:(dim(pad)[2]/size)]
+  return(iterateur)
+>>>>>>> b6dff6722201d320762a6865329177f1e5901480
 }
 
 convertDCT <- function(img){
