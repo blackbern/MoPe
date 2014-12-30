@@ -1,9 +1,9 @@
-#source("http://bioconductor.org/biocLite.R")
-#biocLite("rhdf5")
+# source("http://bioconductor.org/biocLite.R")
+# biocLite("rhdf5")
 
-library("EBImage", lib.loc="~/R/x86_64-unknown-linux-gnu-library/3.1")
-library("rhdf5", lib.loc="~/R/x86_64-unknown-linux-gnu-library/3.1")
-img <- readImage("~/M1/MoPe/Projet/highlight.jpg")
+# library("EBImage", lib.loc="~/R/x86_64-unknown-linux-gnu-library/3.1")
+# library("rhdf5", lib.loc="~/R/x86_64-unknown-linux-gnu-library/3.1")
+# img <- readImage("~/M1/MoPe/Projet/highlight.jpg")
 
 #toolbox
 ###################################################
@@ -111,13 +111,16 @@ padding <- function(img, val){
     padb <- dim(img)[2] + val-dim(img)[2]%%val
   else
     padb <- dim(img)[2]
+
   img_finale <- matrix(0,padr,padb)
   img_finale[1:dim(img)[1],1:dim(img)[2]] <- img[]
+  
   return(img_finale)
 }
 
 average <- function(mat) {
-  pad <- padding(mat, 2)
+  #pad <- padding(mat, 2)
+  pad <- padding(mat, 8)
   iterateur <- blocking(mat,2)
   res <- matrix(0,dim(pad)[1],dim(pad)[2])
   av <- (pad[iterateur]+pad[iterateur+1]+pad[iterateur+dim(pad)[1]]+pad[iterateur+dim(pad)[1]+1])/4
@@ -137,24 +140,13 @@ return(iterateur)
 }
 
 #DC  /OK
-blocking <- function(img, size) {
-  pad <- padding(img, size)
-<<<<<<< HEAD
-  return(matrix(pad,size,ncol(pad)*nrow(pad)))
-  #return(matrix(pad,(size*size),(dim(pad)[1]*dim(pad)[2])/(size*size)))
-}
-
-
-#dc OK
-# blocking2<- function(mat,size)
-# {
-#   pad <- padding(mat, size)
-#   resultat<-matrix(,0,0)
-#   for (i in seq(1,nrow(pad),size))
-#        for(j in seq(1,ncol(pad),size))
-#           resultat<-c(resultat,pad[i:(i+(size-1)),j:(j+(size-1))])
-#   return(matrix(resultat,size*size,(ncol(pad)*nrow(pad)/(size*size))))
+# blocking <- function(img, size) {
+#   pad <- padding(img, size)
+#   return(matrix(pad,size,ncol(pad)*nrow(pad)))
+#   #return(matrix(pad,(size*size),(dim(pad)[1]*dim(pad)[2])/(size*size)))
 # }
+
+
 
 blocking2<- function(mat,size)
 {
@@ -165,28 +157,16 @@ blocking2<- function(mat,size)
     for(j in seq(1,ncol(pad),size))
       resultat<-c(resultat,pad[i:(i+(size-1)),j:(j+(size-1))][zigzag])
   return(matrix(resultat,size*size,(ncol(pad)*nrow(pad)/(size*size))))
-=======
-  iterateur <- matrix((size*c(1:(dim(pad)[1]*dim(pad)[2]/size))-(size-1)),dim(pad)[1],dim(pad)[2])[1:(dim(pad)[1]/size),1:(dim(pad)[2]/size)]
-  return(iterateur)
->>>>>>> b6dff6722201d320762a6865329177f1e5901480
 }
 
 convertDCT <- function(img){
-  image <- blocking2(img,8)
-  image <- mvdct(image,2,FALSE)
+ # image <- blocking2(img,8)
+  image <- mvdct(padding(img,8),2,FALSE)
   return(image)
 }
 
-#dc
-View(blocking2(mat,8)[1,])
-#ac
-View(blocking2(mat,8)[2:nrow(blocking2(mat,8)),])
 
-#DPCMTest<-function(mat)
-#{
-#dpcm<-(matrix(c(mat[1],(mat[2:(nrow(mat)*ncol(mat))]-mat[1:(nrow(mat)*ncol(mat)-1)])),nrow(mat),ncol(mat)))  
-#return(dpcm)
-#}
+
 DPCM<-function(mat)
 {
 #   dpcm<-c(mat[1],(mat[2:(nrow(mat)*ncol(mat))]-mat[1:(nrow(mat)*ncol(mat)-1)]))  
@@ -242,6 +222,75 @@ zigzag<-function(size)
     }
 
   return(resultat)
+}
+
+quantification <- function(mat)
+{
+#   Q<-array(0,64)
+#   Q[1:7]<-1
+  mat[57:64,]<-0
+  
+  return(mat)
+}
+
+######
+prétraitement<-function(img)
+{
+yuv<-Yuv(img)
+final<-array(0,c(dim(padding(img[,,1],8)),dim(img)[3]))
+final[,,2]<-average(yuv[,,2])
+final[,,3]<-average(yuv[,,3])  
+final[,,1]<-convertDCT(yuv[,,1])
+blocs<-blocking2(final[,,1],8)
+blocs[1,]<-DPCM(blocs[1,])
+blocs<-quantification(blocs)
+final[,,1]<-blocs
+l<-list(hauteur(img),largeur(img),8,8,2,2,final[,,1],final[,,2],final[,,3])
+return(l)  
+}
+################################
+
+
+codage <- function() {
+  # supprimer le fichier JPEGfile.h5 s'il existe déjà
+ # if (system(command = "ls | grep JPEGfile.h5") == 0) system(command = "rm JPEGfile.h5");
+  
+  # lecture de l'image à coder
+  RGB <- readImage( file.choose()) * 255 ## conversion oblige
+  
+  L <- prétraitement( RGB ) # TODO
+  # L est une liste contenant :
+  #   les paramètres <H(hauteur img) , W(largeur img) , bh(hauteur bloc) , bw(largeur bloc) , rdown(sous-échantillonage ligne) , cdown(sous-échantillonage colonne)>,
+  #   la matrice des blocs de la composante Y
+  #   les matrices des composantes Cr et Cb sous-échantillonnées
+  
+  # création du fichier et de ces dossiers
+  h5createFile( "JPEGfile.h5" )
+  h5createGroup( "JPEGfile.h5" , "parameters" )
+  h5createGroup( "JPEGfile.h5" , "Y_dct_q" )
+  h5createGroup( "JPEGfile.h5" , "subCb_q" )
+  h5createGroup( "JPEGfile.h5" , "subCr_q" )
+  
+  param <- car( L )
+  Yblocs <- car( cdr( L ))
+  subCb <- car( cdr( cdr( L )))
+  subCr <- car( cdr( cdr( cdr( L ))))
+  # écriture des paramètres
+  h5write( param[1], "JPEGfile.h5" , "parameters/H" )
+  h5write( param[2], "JPEGfile.h5" , "parameters/W" )
+  h5write( param[3], "JPEGfile.h5" , "parameters/bh" )
+  h5write( param[4], "JPEGfile.h5" , "parameters/bw" )
+  h5write( param[5], "JPEGfile.h5" , "parameters/rdown" )
+  h5write( param[6], "JPEGfile.h5" , "parameters/cdown" )
+  # écriture des composantes Y, Cb et Cr
+  h5write( dim( Yblocs ) , "JPEGfile.h5" , "Y_dct_q/dim" )
+  h5write( Yblocs , "JPEGfile.h5" , "Y_dct_q/blocks" )
+  h5write( subCb , "JPEGfile.h5" , "subCb_q/image" )
+  h5write( subCr , "JPEGfile.h5" , "subCr_q/image" )
+  
+  #     h5ls( "JPEGfile.h5" ) car il faut penser
+  #   à libérer dès que possible de la mémoire
+  rm( param , Yblocs , subCb , subCr )
 }
 
 
