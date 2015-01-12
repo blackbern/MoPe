@@ -97,7 +97,7 @@ Yuv <- function(img) {
   mat[,,1] <- Y
   mat[,,2] <- u
   mat[,,3] <- v
-  return(mat)
+  return(round(mat))
 }
 
 # Partie uv
@@ -118,16 +118,27 @@ padding <- function(img, val){
   return(img_finale)
 }
 
+##########
+# Sous Ã©chantillonnage
+
 average <- function(mat) {
+  pad <- padding(mat, 2)
+  iterateur <- 2*c(1:(nrow(pad)*ncol(pad)/2))-1
+  av <- matrix((pad[iterateur]+pad[iterateur+1])/2,dim(pad)[1]/2,dim(pad)[2])
+  return(av)
+}
+
+average2 <- function(mat) {
   #pad <- padding(mat, 2)
   pad <- padding(mat, 8)
-  iterateur <- blocking(mat,2)
+#   iterateur <- blocking(mat,2)
+  iterateur <- 2*c(1:(nrow(pad)*ncol(pad)/2))-1
   res <- matrix(0,dim(pad)[1],dim(pad)[2])
-  av <- (pad[iterateur]+pad[iterateur+1]+pad[iterateur+dim(pad)[1]]+pad[iterateur+dim(pad)[1]+1])/4
+  av <- (pad[iterateur]+pad[iterateur+1])/2
   res[iterateur] <- av
   res[iterateur+1] <- av
-  res[iterateur+dim(pad)[1]] <- av
-  res[iterateur+dim(pad)[1]+1] <- av
+#   res[iterateur+dim(pad)[1]] <- av
+#   res[iterateur+dim(pad)[1]+1] <- av
   return(res)
 }
 
@@ -161,8 +172,9 @@ blocking2<- function(mat,size)
 
 convertDCT <- function(img){
  # image <- blocking2(img,8)
-  image <- mvdct(padding(img,8),2,FALSE)
-  return(image)
+#   image <- mvdct(padding(img,8),2,FALSE)
+  image <- mvdct(img,2,FALSE)
+  return(round(image))
 }
 
 
@@ -226,71 +238,81 @@ zigzag<-function(size)
 
 quantification <- function(mat)
 {
-#   Q<-array(0,64)
-#   Q[1:7]<-1
-  mat[57:64,]<-0
+  Q<-array(600,dim(mat))
+  Q[1:7,]<-1
   
-  return(mat)
+  return(trunc(mat/Q))
 }
 
 ######
-prétraitement<-function(img)
+pretraitement<-function(img)
 {
-yuv<-Yuv(img)
-final<-array(0,c(dim(padding(img[,,1],8)),dim(img)[3]))
-final[,,2]<-average(yuv[,,2])
-final[,,3]<-average(yuv[,,3])  
-final[,,1]<-convertDCT(yuv[,,1])
-blocs<-blocking2(final[,,1],8)
+yuv<-trunc(Yuv(img))
+# final<-array(0,c(dim(padding(img[,,1],8)),dim(img)[3]))
+subU<-average(yuv[,,2])
+subV<-average(yuv[,,3])
+Y<-convertDCT(yuv[,,1])
+blocs<-blocking2(Y,8)
 blocs[1,]<-DPCM(blocs[1,])
 blocs<-quantification(blocs)
-final[,,1]<-blocs
-l<-list(hauteur(img),largeur(img),8,8,2,2,final[,,1],final[,,2],final[,,3])
-return(l)  
+Y<-blocs
+#l<-list(c(hauteur(img),largeur(img),8,8,2,2),final[,,1],final[,,2],final[,,3])
+return(list(Y,subU,subV))
 }
 ################################
 
 
 codage <- function() {
-  # supprimer le fichier JPEGfile.h5 s'il existe déjà
- # if (system(command = "ls | grep JPEGfile.h5") == 0) system(command = "rm JPEGfile.h5");
+  # supprimer le fichier JPEGfile.h5 s'il existe d?j?
+  if (system(command = "ls | grep JPEGfile.h5") == 0) system(command = "rm JPEGfile.h5")
   
-  # lecture de l'image à coder
+  # lecture de l'image ? coder
   RGB <- readImage( file.choose()) * 255 ## conversion oblige
   
-  L <- prétraitement( RGB ) # TODO
+  L <- pretraitement( RGB ) # TODO
   # L est une liste contenant :
-  #   les paramètres <H(hauteur img) , W(largeur img) , bh(hauteur bloc) , bw(largeur bloc) , rdown(sous-échantillonage ligne) , cdown(sous-échantillonage colonne)>,
+  #   les param?tres <H(hauteur img) , W(largeur img) , bh(hauteur bloc) , bw(largeur bloc) , rdown(sous-?chantillonage ligne) , cdown(sous-?chantillonage colonne)>,
   #   la matrice des blocs de la composante Y
-  #   les matrices des composantes Cr et Cb sous-échantillonnées
+  #   les matrices des composantes Cr et Cb sous-?chantillonn?es
   
-  # création du fichier et de ces dossiers
+  # cr?ation du fichier et de ces dossiers
   h5createFile( "JPEGfile.h5" )
   h5createGroup( "JPEGfile.h5" , "parameters" )
   h5createGroup( "JPEGfile.h5" , "Y_dct_q" )
   h5createGroup( "JPEGfile.h5" , "subCb_q" )
   h5createGroup( "JPEGfile.h5" , "subCr_q" )
   
-  param <- car( L )
-  Yblocs <- car( cdr( L ))
-  subCb <- car( cdr( cdr( L )))
-  subCr <- car( cdr( cdr( cdr( L ))))
-  # écriture des paramètres
-  h5write( param[1], "JPEGfile.h5" , "parameters/H" )
-  h5write( param[2], "JPEGfile.h5" , "parameters/W" )
-  h5write( param[3], "JPEGfile.h5" , "parameters/bh" )
-  h5write( param[4], "JPEGfile.h5" , "parameters/bw" )
-  h5write( param[5], "JPEGfile.h5" , "parameters/rdown" )
-  h5write( param[6], "JPEGfile.h5" , "parameters/cdown" )
-  # écriture des composantes Y, Cb et Cr
-  h5write( dim( Yblocs ) , "JPEGfile.h5" , "Y_dct_q/dim" )
-  h5write( Yblocs , "JPEGfile.h5" , "Y_dct_q/blocks" )
-  h5write( subCb , "JPEGfile.h5" , "subCb_q/image" )
-  h5write( subCr , "JPEGfile.h5" , "subCr_q/image" )
-  
+#   param <- car( L )
+#   Yblocs <- car( cdr( L ))
+#   subCb <- car( cdr( cdr( L )))
+#   subCr <- car( cdr( cdr( cdr( L ))))
+#   # ?criture des param?tres
+#   h5write( param[1], "JPEGfile.h5" , "parameters/H" )
+#   h5write( param[2], "JPEGfile.h5" , "parameters/W" )
+#   h5write( param[3], "JPEGfile.h5" , "parameters/bh" )
+#   h5write( param[4], "JPEGfile.h5" , "parameters/bw" )
+#   h5write( param[5], "JPEGfile.h5" , "parameters/rdown" )
+#   h5write( param[6], "JPEGfile.h5" , "parameters/cdown" )
+#   # ?criture des composantes Y, Cb et Cr
+#   h5write( dim( Yblocs ) , "JPEGfile.h5" , "Y_dct_q/dim" )
+#   h5write( Yblocs , "JPEGfile.h5" , "Y_dct_q/blocks" )
+#   h5write( subCb , "JPEGfile.h5" , "subCb_q/image" )
+#   h5write( subCr , "JPEGfile.h5" , "subCr_q/image" )
+  # ?criture des param?tres
+  h5write( dim(RGB)[1], "JPEGfile.h5" , "parameters/H" )
+  h5write( dim(RGB)[2], "JPEGfile.h5" , "parameters/W" )
+  h5write( 8, "JPEGfile.h5" , "parameters/bh" )
+  h5write( 8, "JPEGfile.h5" , "parameters/bw" )
+  h5write( 2, "JPEGfile.h5" , "parameters/rdown" )
+  h5write( 2, "JPEGfile.h5" , "parameters/cdown" )
+  # ?criture des composantes Y, Cb et Cr
+  h5write( dim( L[[1]] ) , "JPEGfile.h5" , "Y_dct_q/dim" )
+  h5write( L[[1]] , "JPEGfile.h5" , "Y_dct_q/blocks" )
+  h5write( L[[2]] , "JPEGfile.h5" , "subCb_q/image" )
+  h5write( L[[3]] , "JPEGfile.h5" , "subCr_q/image" )  
   #     h5ls( "JPEGfile.h5" ) car il faut penser
-  #   à libérer dès que possible de la mémoire
-  rm( param , Yblocs , subCb , subCr )
+  #   ? lib?rer d?s que possible de la m?moire
+#   rm( param , Yblocs , subCb , subCr )
 }
 
 
